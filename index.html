@@ -2,8 +2,9 @@
 <html lang="ja">
 <head>
   <meta charset="UTF-8">
-  <!-- iPhone対策：100dvh + ズーム抑制 -->
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <!-- iPhone/Safariの表示ズレ対策 -->
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+
   <title>GEAR FRONT - Circular Edition</title>
   <script src="https://cdn.tailwindcss.com"></script>
 
@@ -22,12 +23,16 @@
       --ingot-dark: #703816;
       --ingot-edge: #451a03;
       --ex-red: #ef4444;
+
+      /* Safe Area（ノッチ） */
+      --safe-top: env(safe-area-inset-top);
+      --safe-bottom: env(safe-area-inset-bottom);
+      --safe-left: env(safe-area-inset-left);
+      --safe-right: env(safe-area-inset-right);
     }
 
-    /* ====== ここが「はみ出し対策」本体 ====== */
-    html, body {
-      height: 100%;
-    }
+    html, body { height: 100%; }
+
     body {
       background-color: var(--steam-bg);
       background-image: radial-gradient(circle at center, #262626 0%, #171717 100%);
@@ -35,25 +40,28 @@
       color: #d6d3d1;
       margin: 0;
 
-      /* iPhoneのアドレスバー変動対策 */
+      /* iOS Safariのアドレスバー伸縮対策 */
       height: 100dvh;
-      overflow: hidden; /* 画面全体は固定 */
+      overflow: hidden;         /* 画面全体は固定 */
       touch-action: manipulation;
+      padding: var(--safe-top) var(--safe-right) var(--safe-bottom) var(--safe-left);
+      box-sizing: border-box;
     }
 
+    .font-steampunk { font-family: 'Cinzel', serif; }
+    .font-number { font-family: 'Roboto Condensed', sans-serif; }
+
+    /* ====== 3x3 グリッド（縦画面はこれが基本） ====== */
     .game-container {
       display: grid;
       grid-template-columns: 1.2fr 3fr 1.2fr;
-
-      /* ★固定比率(fr)やめて、上下は必要分・中央に残り */
-      grid-template-rows: auto 1fr auto;
-
-      height: 100dvh;
-      width: 100vw;
+      grid-template-rows: auto 1fr auto; /* 上下は必要分・中央に残り */
+      height: 100%;
+      width: 100%;
       padding: 8px;
       gap: 8px;
-
-      overflow: hidden; /* 外にはみ出させない */
+      overflow: hidden;
+      box-sizing: border-box;
     }
 
     @media (max-width: 640px) {
@@ -64,32 +72,7 @@
       }
     }
 
-    /* ===== Landscape(横持ち) は中央を主役にする ===== */
-@media (orientation: landscape) {
-  .game-container{
-    /* auto だと下段が伸びて中央が潰れるので、比率を固定に戻す */
-    grid-template-rows: 0.9fr 2.4fr 1.2fr;
-  }
-
-  /* 下段(手札)が背伸びしないように：枠内スクロールで収める */
-  .p-bottom{
-    overflow: auto;
-    min-height: 0;
-  }
-
-  /* 左右も潰れやすいので縮められるように */
-  .p-left, .p-right, .p-top, .central-field{
-    min-height: 0;
-  }
-}
-
-/* ===== Portrait(縦持ち) は今のままでもOK、でも中央が潰れるなら保険 ===== */
-@media (orientation: portrait) {
-  .central-field{
-    min-height: 220px; /* 盤面の最低ライン */
-  }
-}
-
+    /* ====== パネル共通：ここが「はみ出し」防止の要 ====== */
     .panel-box {
       border: 2px solid var(--steam-copper);
       background: rgba(41, 37, 36, 0.95);
@@ -100,12 +83,10 @@
       flex-direction: column;
       transition: all 0.3s ease;
 
-      /* ★これが超重要：grid/flex内で縮められるようにする */
-      min-height: 0;
-
-      /* ★中身が増えたら“パネル内だけ”スクロール */
-      overflow: auto;
+      min-height: 0;                 /* grid/flexで縮めるため必須 */
+      overflow: auto;                /* 中身が多い時はパネル内だけスクロール */
       -webkit-overflow-scrolling: touch;
+      box-sizing: border-box;
     }
 
     /* 配置設定 */
@@ -121,7 +102,7 @@
     .p-controls {
       grid-column: 1; grid-row: 1;
       border-bottom-width: 4px; border-right-width: 4px; border-bottom-right-radius: 20px;
-      padding: 6px !important;
+      padding: 6px !important; /* ボタン密度 */
     }
 
     .central-field {
@@ -136,25 +117,65 @@
       justify-content: center;
       position: relative;
 
-      /* ★中央も縮められるように */
       min-height: 0;
-      overflow: hidden;
+      overflow: hidden; /* ここが横画面で「丸マスク」になりやすいので、横は後で上書き */
+      box-sizing: border-box;
     }
 
-    /* 縦が苦しい端末だけ中央の高さを抑える（任意だけど効く） */
-    @media (max-width: 480px) {
-      .central-field { max-height: 42vh; }
+    /* ====== 縦画面（portrait）微調整：タイトルとボタンが切れない ====== */
+    @media (orientation: portrait) {
+      .p-title h1{
+        font-size: 1.35rem;
+        letter-spacing: 0.12em;
+        line-height: 1.05;
+        text-align: center;
+      }
+      .p-title .text-\[8px\]{
+        transform: scale(0.9);
+        transform-origin: center;
+        white-space: nowrap;
+      }
+      .p-controls .btn-steam{
+        font-size: 0.6rem;
+        padding: 4px 6px;
+      }
+      /* 盤面最低ライン（端末によっては助かる） */
+      .central-field{ min-height: 220px; }
     }
 
-    /* 下段(あなた)の手札が縦を食いすぎる対策（任意） */
-    @media (max-width: 480px) {
-      #playerBox0 { padding: 6px !important; }
-      #playerBox0 .hand { min-height: 72px !important; }
+    /* ====== 横画面（landscape）：盤面が「わからん」＆「切れ方えぐい」対策 ====== */
+    @media (orientation: landscape) {
+      /* 行配分を横向き用に固定：中央を主役に */
+      .game-container{
+        grid-template-rows: 0.55fr 3.2fr 1.25fr;
+        gap: 6px;
+        padding: 6px;
+      }
+
+      .panel-box{ padding: 8px; }
+
+      /* 丸いborder-radiusがSafariで強いクリップになるので横は角丸にする */
+      .central-field{
+        border-radius: 18px;
+        overflow: visible;   /* 盤面の切れを止める */
+        min-height: 240px;
+      }
+
+      /* 中央の拡大（scale-110）が横で破綻しやすいので上書き */
+      #tableArea{
+        transform: scale(0.85) !important;
+        transform-origin: center center;
+      }
+
+      /* 横はタイトルも少し縮める */
+      .p-title h1{ font-size: 1.4rem; letter-spacing: 0.12em; }
+      .p-title .text-\[8px\]{ transform: scale(0.9); transform-origin: center; white-space: nowrap; }
+
+      /* 下段の手札が潰れすぎない最低ライン */
+      #playerBox0 .hand{ min-height: 78px; }
     }
 
-    .font-steampunk { font-family: 'Cinzel', serif; }
-    .font-number { font-family: 'Roboto Condensed', sans-serif; }
-
+    /* ====== カードUI ====== */
     .card {
       transition: all 0.2s ease-out;
       background: linear-gradient(135deg, var(--ingot-light) 0%, var(--ingot-base) 50%, var(--ingot-dark) 100%);
@@ -185,11 +206,13 @@
       text-transform: uppercase;
       font-weight: bold;
     }
+
     .p-controls .btn-steam {
       padding: 4px 8px;
       font-size: 0.65rem;
       letter-spacing: 0.02em;
     }
+
     .btn-steam:active { transform: translateY(2px); box-shadow: 0 1px 0 #451a03; }
     .btn-steam:disabled { filter: grayscale(1); opacity: 0.4; }
 
@@ -207,7 +230,8 @@
     .side-pile-card {
       width: 28px; height: 40px; font-size: 18px;
       display: flex; align-items: center; justify-content: center;
-      background: var(--steam-paper); border: 1.5px solid var(--ingot-edge);
+      background: var(--steam-paper);
+      border: 1.5px solid var(--ingot-edge);
       color: black; font-weight: 900;
       font-family: 'Roboto Condensed', sans-serif;
       border-radius: 3px;
@@ -230,7 +254,6 @@
       animation: badge-pop 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
       font-family: 'Cinzel', serif;
     }
-
     @keyframes badge-pop { from { transform: translateX(-50%) scale(0.85); } to { transform: translateX(-50%) scale(1); } }
 
     .badge-win { background: #065f46; color: #34d399; border: 1px solid #34d399; }
@@ -253,7 +276,6 @@
       0%, 100% { box-shadow: inset 0 0 15px rgba(0,0,0,0.5); }
       50% { box-shadow: 0 0 25px rgba(251,191,36,0.25), inset 0 0 18px rgba(0,0,0,0.5); }
     }
-
     .batted-anim { border-color: #ef4444 !important; }
 
     .ex-machine-pulse { animation: red-pulse 1s infinite alternate; border-color: var(--ex-red) !important; }
@@ -409,7 +431,7 @@
       { val: 1, count: 7, bonus: 6 },
       { val: 2, count: 5, bonus: 3 },
       { val: 3, count: 3, bonus: 2 },
-      { val: 4, count: 3, bonus: 1 },
+      { val: 4, count: 3, bonus: 1 },  // ※ここは「今ので合ってる」前提で触ってません
       { val: 5, count: 2, bonus: 1 },
       { val: 6, count: 2, bonus: 2 },
       { val: '?', count: 1, bonus: 0 }
@@ -504,7 +526,8 @@
           if (pIdx === 0 && state.wildDeclaration && isVisible) displayVal = state.wildDeclaration;
           else if (pIdx > 0 && state.players[pIdx] && state.players[pIdx].npcWild && isVisible) displayVal = state.players[pIdx].npcWild;
         }
-        el.classList.add('engraved'); el.textContent = displayVal;
+        el.classList.add('engraved');
+        el.textContent = displayVal;
 
         if (isLarge && pIdx !== -1) {
           const p = state.players[pIdx];
@@ -564,9 +587,11 @@
       if (!tableArea) return;
       tableArea.innerHTML = '';
       let count = 0;
+
       state.players.forEach((p, i) => {
         if (!p.play) return;
         count++;
+
         let isHidden = (state.phase !== 'revealed' && state.phase !== 'resolution-ready' && state.phase !== 'resolving' && !p.isBatted);
         if (state.phase === 'playing' && i === state.parentIdx && state.roundCount < 5 && p.play.value !== '?') isHidden = false;
 
@@ -593,6 +618,7 @@
         label.className = "text-[10px] text-stone-500 font-bold uppercase";
         label.textContent = `U-0${i+1}`;
         cardWrap.appendChild(label);
+
         tableArea.appendChild(cardWrap);
       });
 
@@ -609,16 +635,21 @@
     function handlePlay(pIdx, cIdx) {
       if (state.phase !== 'playing' || state.players[pIdx].play) return;
       if (pIdx !== 0) return;
+
       if (state.players[state.parentIdx].play === null && pIdx !== state.parentIdx) {
         if (statusEl) statusEl.textContent = "WAIT FOR CAPTAIN";
         return;
       }
+
       const card = state.players[pIdx].hand[cIdx];
+
       if (pIdx === state.parentIdx && state.roundCount < 5 && card.value === '?') {
         if (statusEl) statusEl.textContent = "NO '?' OPENER";
         return;
       }
+
       state.players[pIdx].play = state.players[pIdx].hand.splice(cIdx, 1)[0];
+
       state.players.forEach((p, i) => {
         if (i !== 0 && !p.play) {
           let idx = 0;
@@ -629,6 +660,7 @@
           p.play = p.hand.splice(idx, 1)[0];
         }
       });
+
       renderAll();
     }
 
@@ -636,17 +668,35 @@
       let deck = [];
       cardDefinition.forEach(d => { for (let i = 0; i < d.count; i++) deck.push({ value: d.val, bonus: d.bonus }); });
       deck.sort(() => Math.random() - 0.5);
+
       state.players.forEach(p => {
-        p.hand = deck.splice(0, 5); p.play = null; p.rawScore = 0; p.score = 0; p.sideWon = []; p.sideLost = []; p.isBatted = false; p.lastWonRound = -1; p.npcWild = null; p.roundOutcome = null; p.isDivineHit = false;
+        p.hand = deck.splice(0, 5);
+        p.play = null;
+        p.rawScore = 0;
+        p.score = 0;
+        p.sideWon = [];
+        p.sideLost = [];
+        p.isBatted = false;
+        p.lastWonRound = -1;
+        p.npcWild = null;
+        p.roundOutcome = null;
+        p.isDivineHit = false;
         p.box.classList.remove('winner-anim', 'batted-anim', 'ex-machine-pulse');
       });
+
       state.talon = deck.splice(0, 3);
-      state.roundCount = 0; state.parentIdx = null; state.phase = 'dealing'; state.exMachinePlayerIdx = null;
+
+      state.roundCount = 0;
+      state.parentIdx = null;
+      state.phase = 'dealing';
+      state.exMachinePlayerIdx = null;
       state.allBattedLastRound = false;
       state.divineHitPlayerIds = [];
+
       if (showdownBtn) showdownBtn.classList.add('hidden');
       if (setParentBtn) setParentBtn.disabled = false;
       if (rankingModal) rankingModal.classList.add('hidden');
+
       renderAll();
       if (statusEl) statusEl.textContent = "BOILER STOKED";
     }
@@ -664,7 +714,8 @@
         }
 
         state.allBattedLastRound = false;
-        state.phase = 'playing'; state.roundCount++;
+        state.phase = 'playing';
+        state.roundCount++;
         state.divineHitPlayerIds = [];
 
         if (state.roundCount === 5) {
@@ -677,7 +728,8 @@
         }
 
         state.players.forEach(p => {
-          p.isBatted = false; p.roundOutcome = null;
+          p.isBatted = false;
+          p.roundOutcome = null;
           p.box.classList.remove('winner-anim', 'batted-anim');
         });
 
@@ -688,12 +740,14 @@
           cp.play = cp.hand.splice(cIdx, 1)[0];
         }
 
-        setParentBtn.disabled = true; renderAll();
+        setParentBtn.disabled = true;
+        renderAll();
       };
     }
 
     function npcSelectWild(pIdx) {
       const p = state.players[pIdx];
+
       const otherCards = state.players.filter(x => x.id !== pIdx).map(x => {
         if (x.play.value !== '?') return x.play.value;
         return (x.id === 0) ? state.wildDeclaration : x.npcWild;
@@ -701,20 +755,23 @@
 
       for (let n = 1; n <= 6; n++) {
         if (otherCards.includes(n)) continue;
+
         const tempField = [...otherCards, n];
         const sum = tempField.filter(x => typeof x === 'number').reduce((a, b) => a + b, 0);
         const types = new Set(tempField.filter(x => typeof x === 'number')).size;
+
         let win = false;
         switch (n) {
           case 1: if ([...p.sideWon, ...p.sideLost].some(c => (c.value === 1 || c.originalValue === 1))) win = true; break;
-          case 2: if (types === 4) win = true; break;
-          case 3: if (sum >= 7) win = true; break;
-          case 4: if (types <= 2) win = true; break;
+          case 2: if (types === 4) win = true; break;         // ※今ので合ってる前提
+          case 3: if (sum >= 7) win = true; break;           // ※今ので合ってる前提
+          case 4: if (types <= 2) win = true; break;         // ※今ので合ってる前提
           case 5: if (tempField.includes(6)) win = true; break;
           case 6: if (pIdx === state.parentIdx) win = true; break;
         }
         if (win) return n;
       }
+
       for (let n = 6; n >= 1; n--) { if (!otherCards.includes(n)) return n; }
       return 6;
     }
@@ -724,10 +781,16 @@
         if (state.phase === 'showdown-ready') {
           state.phase = 'revealed';
           if (statusEl) statusEl.textContent = "FIELD REVEALED";
-          state.players.forEach((p, i) => { if (i !== 0 && p.play.value === '?') p.npcWild = npcSelectWild(i); });
+
+          state.players.forEach((p, i) => {
+            if (i !== 0 && p.play.value === '?') p.npcWild = npcSelectWild(i);
+          });
+
           renderAll();
 
-          const needsDec = (state.exMachinePlayerIdx === 0) || (state.players[0].play.value === '?' && state.exMachinePlayerIdx !== 0);
+          const needsDec = (state.exMachinePlayerIdx === 0) ||
+            (state.players[0].play.value === '?' && state.exMachinePlayerIdx !== 0);
+
           if (needsDec) {
             showdownBtn.textContent = "CONFIRM & DECLARE";
             state.phase = 'awaiting-declaration';
@@ -751,8 +814,9 @@
       };
     }
 
-    if (document.getElementById('exMachineSubmit')) {
-      document.getElementById('exMachineSubmit').onclick = () => {
+    const exSubmit = document.getElementById('exMachineSubmit');
+    if (exSubmit) {
+      exSubmit.onclick = () => {
         if (exMachineModal) exMachineModal.classList.add('hidden');
         if (showdownBtn) {
           showdownBtn.classList.remove('hidden');
@@ -779,7 +843,9 @@
       });
 
       // 1. バッティング
-      const counts = {}; plays.forEach(p => counts[p.val] = (counts[p.val] || 0) + 1);
+      const counts = {};
+      plays.forEach(p => counts[p.val] = (counts[p.val] || 0) + 1);
+
       plays.forEach(p => {
         if (counts[p.val] > 1) {
           state.players[p.id].isBatted = true;
@@ -796,37 +862,49 @@
       const types = new Set(activeVals).size;
       active.sort((a, b) => a.val - b.val);
 
-      let roundWon = false; const scoredThisRound = new Set();
+      let roundWon = false;
+      const scoredThisRound = new Set();
+
       for (const pd of active) {
         if (roundWon) break;
+
         const p = state.players[pd.id];
         let isWin = false;
+
         switch (pd.val) {
           case 1: if ([...p.sideWon, ...p.sideLost].some(c => (c.value === 1 || c.originalValue === 1))) isWin = true; break;
-          case 2: if (types === 4) isWin = true; break;
-          case 3: if (sum >= 7) isWin = true; break;
+          case 2: if (types === 4) isWin = true; break;     // ※今ので合ってる前提
+          case 3: if (sum >= 7) isWin = true; break;       // ※今ので合ってる前提
           case 4: if (types <= 2 && activeVals.length > 0) isWin = true; break;
           case 5: if (activeVals.includes(6)) isWin = true; break;
           case 6: if (pd.isParent) isWin = true; break;
         }
+
         if (isWin) {
+          /* 重要：?は加点しない（ボーナス0） */
           p.rawScore += (pd.val + (pd.isWild ? 0 : (cardDefinition.find(d => d.val === pd.val)?.bonus || 0)));
           p.sideWon.push({ value: pd.val, originalValue: pd.card.value });
-          p.lastWonRound = state.roundCount; p.box.classList.add('winner-anim');
+          p.lastWonRound = state.roundCount;
+          p.box.classList.add('winner-anim');
           p.roundOutcome = 'WIN';
-          roundWon = true; scoredThisRound.add(p.id);
+          roundWon = true;
+          scoredThisRound.add(p.id);
         }
       }
 
       if (!roundWon && active.length) {
+        // パワー勝利：最大値のみ（ボーナスなし）
         const pwr = active.reduce((a, b) => a.val > b.val ? a : b);
         const p = state.players[pwr.id];
-        p.rawScore += pwr.val; p.sideWon.push({ value: pwr.val, originalValue: pwr.card.value });
-        p.lastWonRound = state.roundCount; scoredThisRound.add(p.id);
+        p.rawScore += pwr.val;
+        p.sideWon.push({ value: pwr.val, originalValue: pwr.card.value });
+        p.lastWonRound = state.roundCount;
+        scoredThisRound.add(p.id);
         p.roundOutcome = 'WIN';
         p.box.classList.add('winner-anim');
       }
 
+      // 勝ってない＆バッティングでもない → SCRAPPED
       plays.forEach(pd => {
         const p = state.players[pd.id];
         if (!scoredThisRound.has(p.id) && !p.isBatted) {
@@ -835,9 +913,12 @@
         }
       });
 
+      // EX:MACHINA（最終ラウンドボーナス）
       state.divineHitPlayerIds = [];
       if (state.exMachinePlayerIdx !== null && state.roundCount === 5) {
-        let bonus = 0; let g = [...state.exMachineGuesses];
+        let bonus = 0;
+        let g = [...state.exMachineGuesses];
+
         plays.forEach(target => {
           if (target.id === state.exMachinePlayerIdx) return;
           const idx = g.indexOf(target.card.value);
@@ -847,13 +928,16 @@
             state.divineHitPlayerIds.push(target.id);
           }
         });
+
         state.players[state.exMachinePlayerIdx].rawScore += bonus;
+
         if (bonus > 0) {
           const rm = state.players[state.exMachinePlayerIdx].box.querySelector('.result-msg');
           if (rm) rm.textContent = `DIVINE BONUS +${bonus}!!`;
         }
       }
 
+      // 6のペナルティ（他者の合計から-1）
       state.players.forEach(target => {
         let totalPenalty = 0;
         state.players.forEach(owner => {
@@ -866,11 +950,19 @@
 
       renderAll();
       if (showdownBtn) showdownBtn.classList.add('hidden');
+
       setTimeout(() => {
         state.players.forEach(p => { p.play = null; p.npcWild = null; p.roundOutcome = null; });
-        state.wildDeclaration = null; state.phase = 'playing'; renderAll();
-        if (state.players[0].hand.length > 0) { if (setParentBtn) setParentBtn.disabled = false; }
-        else { state.phase = 'finished'; showFinalRanking(); }
+        state.wildDeclaration = null;
+        state.phase = 'playing';
+        renderAll();
+
+        if (state.players[0].hand.length > 0) {
+          if (setParentBtn) setParentBtn.disabled = false;
+        } else {
+          state.phase = 'finished';
+          showFinalRanking();
+        }
       }, 3500);
     }
 
