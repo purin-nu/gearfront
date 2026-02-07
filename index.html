@@ -64,6 +64,32 @@
       }
     }
 
+    /* ===== Landscape(横持ち) は中央を主役にする ===== */
+@media (orientation: landscape) {
+  .game-container{
+    /* auto だと下段が伸びて中央が潰れるので、比率を固定に戻す */
+    grid-template-rows: 0.9fr 2.4fr 1.2fr;
+  }
+
+  /* 下段(手札)が背伸びしないように：枠内スクロールで収める */
+  .p-bottom{
+    overflow: auto;
+    min-height: 0;
+  }
+
+  /* 左右も潰れやすいので縮められるように */
+  .p-left, .p-right, .p-top, .central-field{
+    min-height: 0;
+  }
+}
+
+/* ===== Portrait(縦持ち) は今のままでもOK、でも中央が潰れるなら保険 ===== */
+@media (orientation: portrait) {
+  .central-field{
+    min-height: 220px; /* 盤面の最低ライン */
+  }
+}
+
     .panel-box {
       border: 2px solid var(--steam-copper);
       background: rgba(41, 37, 36, 0.95);
