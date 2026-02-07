@@ -1,997 +1,242 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-  <meta charset="UTF-8">
-  <!-- iPhone/Safariの表示ズレ対策 -->
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>GEAR FRONT</title>
 
-  <title>GEAR FRONT - Circular Edition</title>
-  <script src="https://cdn.tailwindcss.com"></script>
+<style>
+:root{
+  --steam-bg:#1c1a18;
+  --steam-panel:#2a2623;
+  --steam-accent:#c46a1a;
+  --steam-text:#f5c77a;
+}
 
-  <style>
-    @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@700;900&family=Noto+Sans+JP:wght@400;700;900&family=Roboto+Condensed:wght@700&display=swap');
+*{ box-sizing:border-box; }
 
-    :root {
-      --steam-brass: #b45309;
-      --steam-copper: #92400e;
-      --steam-gold: #fbbf24;
-      --steam-rust: #7f1d1d;
-      --steam-bg: #1c1917;
-      --steam-paper: #fef3c7;
-      --ingot-light: #d7a17a;
-      --ingot-base: #b87333;
-      --ingot-dark: #703816;
-      --ingot-edge: #451a03;
-      --ex-red: #ef4444;
+body{
+  margin:0;
+  background:#000;
+  overflow:hidden;
+  height:100svh;
+  font-family: "Georgia", serif;
+}
 
-      /* Safe Area（ノッチ） */
-      --safe-top: env(safe-area-inset-top);
-      --safe-bottom: env(safe-area-inset-bottom);
-      --safe-left: env(safe-area-inset-left);
-      --safe-right: env(safe-area-inset-right);
-    }
+/* ===== 画面フィット用 ===== */
+#viewport{
+  position:fixed;
+  inset:0;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  overflow:hidden;
+}
 
-    html, body { height: 100%; }
+/* ===== 盤面（設計サイズ固定） ===== */
+.game-container{
+  width:1280px;
+  height:720px;
+  background:radial-gradient(#2b2622,#141210);
+  padding:10px;
+  display:grid;
+  grid-template-columns:1.2fr 3fr 1.2fr;
+  grid-template-rows:0.9fr 2.4fr 1.3fr;
+  gap:10px;
+  transform-origin:center center;
+}
 
-    body {
-      background-color: var(--steam-bg);
-      background-image: radial-gradient(circle at center, #262626 0%, #171717 100%);
-      font-family: 'Noto Sans JP', sans-serif;
-      color: #d6d3d1;
-      margin: 0;
+/* ===== 共通パネル ===== */
+.panel{
+  background:linear-gradient(#2e2925,#1f1c19);
+  border:4px solid var(--steam-accent);
+  border-radius:14px;
+  color:var(--steam-text);
+  padding:10px;
+  position:relative;
+  overflow:hidden;
+}
 
-      /* iOS Safariのアドレスバー伸縮対策 */
-      height: 100dvh;
-      overflow: hidden;         /* 画面全体は固定 */
-      touch-action: manipulation;
-      padding: var(--safe-top) var(--safe-right) var(--safe-bottom) var(--safe-left);
-      box-sizing: border-box;
-    }
+.title{
+  font-weight:bold;
+  letter-spacing:1px;
+  margin-bottom:6px;
+}
 
-    .font-steampunk { font-family: 'Cinzel', serif; }
-    .font-number { font-family: 'Roboto Condensed', sans-serif; }
+.score{
+  position:absolute;
+  top:10px;
+  right:10px;
+  border:2px solid var(--steam-accent);
+  padding:4px 10px;
+  border-radius:8px;
+  font-weight:bold;
+}
 
-    /* ====== 3x3 グリッド（縦画面はこれが基本） ====== */
-    .game-container {
-      display: grid;
-      grid-template-columns: 1.2fr 3fr 1.2fr;
-      grid-template-rows: auto 1fr auto; /* 上下は必要分・中央に残り */
-      height: 100%;
-      width: 100%;
-      padding: 8px;
-      gap: 8px;
-      overflow: hidden;
-      box-sizing: border-box;
-    }
+/* ===== 中央フィールド ===== */
+.central-field{
+  grid-column:1/4;
+  position:relative;
+}
 
-    @media (max-width: 640px) {
-      .game-container {
-        grid-template-columns: 1.1fr 3.8fr 1.1fr;
-        gap: 4px;
-        padding: 4px;
-      }
-    }
+.central-field::before{
+  content:"";
+  position:absolute;
+  inset:8%;
+  border:2px dashed rgba(255,170,80,0.3);
+  border-radius:50%;
+}
 
-    /* ====== パネル共通：ここが「はみ出し」防止の要 ====== */
-    .panel-box {
-      border: 2px solid var(--steam-copper);
-      background: rgba(41, 37, 36, 0.95);
-      box-shadow: inset 0 0 15px rgba(0,0,0,0.5);
-      padding: 10px;
-      position: relative;
-      display: flex;
-      flex-direction: column;
-      transition: all 0.3s ease;
+/* ===== カード ===== */
+.card{
+  width:90px;
+  height:140px;
+  background:linear-gradient(#d59a63,#b36a2b);
+  border-radius:10px;
+  color:#3a220f;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-size:48px;
+  font-weight:bold;
+  box-shadow: inset 0 0 0 4px rgba(0,0,0,0.2);
+}
 
-      min-height: 0;                 /* grid/flexで縮めるため必須 */
-      overflow: auto;                /* 中身が多い時はパネル内だけスクロール */
-      -webkit-overflow-scrolling: touch;
-      box-sizing: border-box;
-    }
+.card-row{
+  display:flex;
+  gap:12px;
+}
 
-    /* 配置設定 */
-    .p-top { grid-column: 2; grid-row: 1; border-bottom-width: 4px; }
-    .p-left { grid-column: 1; grid-row: 2; border-right-width: 4px; }
-    .p-right { grid-column: 3; grid-row: 2; border-left-width: 4px; }
-    .p-bottom { grid-column: 2; grid-row: 3; border-top-width: 5px; border-color: var(--steam-brass); }
+/* ===== ボタン ===== */
+button{
+  background:linear-gradient(#c46a1a,#8a4510);
+  border:none;
+  color:#fff;
+  padding:10px;
+  border-radius:8px;
+  font-weight:bold;
+  cursor:pointer;
+}
 
-    /* 四隅のパネル */
-    .p-mission { grid-column: 1; grid-row: 3; border-top-width: 4px; border-right-width: 4px; border-top-right-radius: 20px; }
-    .p-talon { grid-column: 3; grid-row: 3; border-top-width: 4px; border-left-width: 4px; border-top-left-radius: 20px; }
-    .p-title { grid-column: 3; grid-row: 1; border-bottom-width: 4px; border-left-width: 4px; border-bottom-left-radius: 20px; }
-    .p-controls {
-      grid-column: 1; grid-row: 1;
-      border-bottom-width: 4px; border-right-width: 4px; border-bottom-right-radius: 20px;
-      padding: 6px !important; /* ボタン密度 */
-    }
+button:disabled{
+  opacity:0.4;
+}
 
-    .central-field {
-      grid-column: 2;
-      grid-row: 2;
-      background: radial-gradient(circle, rgba(180, 83, 9, 0.1) 0%, transparent 80%);
-      border-radius: 50%;
-      border: 1px dashed rgba(146, 64, 14, 0.15);
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      position: relative;
-
-      min-height: 0;
-      overflow: hidden; /* ここが横画面で「丸マスク」になりやすいので、横は後で上書き */
-      box-sizing: border-box;
-    }
-
-    /* ====== 縦画面（portrait）微調整：タイトルとボタンが切れない ====== */
-    @media (orientation: portrait) {
-      .p-title h1{
-        font-size: 1.35rem;
-        letter-spacing: 0.12em;
-        line-height: 1.05;
-        text-align: center;
-      }
-      .p-title .text-\[8px\]{
-        transform: scale(0.9);
-        transform-origin: center;
-        white-space: nowrap;
-      }
-      .p-controls .btn-steam{
-        font-size: 0.6rem;
-        padding: 4px 6px;
-      }
-      /* 盤面最低ライン（端末によっては助かる） */
-      .central-field{ min-height: 220px; }
-    }
-
-    /* ====== 横画面（landscape）：盤面が「わからん」＆「切れ方えぐい」対策 ====== */
-    @media (orientation: landscape) {
-      /* 行配分を横向き用に固定：中央を主役に */
-      .game-container{
-        grid-template-rows: 0.55fr 3.2fr 1.25fr;
-        gap: 6px;
-        padding: 6px;
-      }
-
-      .panel-box{ padding: 8px; }
-
-      /* 丸いborder-radiusがSafariで強いクリップになるので横は角丸にする */
-      .central-field{
-        border-radius: 18px;
-        overflow: visible;   /* 盤面の切れを止める */
-        min-height: 240px;
-      }
-
-      /* 中央の拡大（scale-110）が横で破綻しやすいので上書き */
-      #tableArea{
-        transform: scale(0.85) !important;
-        transform-origin: center center;
-      }
-
-      /* 横はタイトルも少し縮める */
-      .p-title h1{ font-size: 1.4rem; letter-spacing: 0.12em; }
-      .p-title .text-\[8px\]{ transform: scale(0.9); transform-origin: center; white-space: nowrap; }
-
-      /* 下段の手札が潰れすぎない最低ライン */
-      #playerBox0 .hand{ min-height: 78px; }
-    }
-
-    /* ====== カードUI ====== */
-    .card {
-      transition: all 0.2s ease-out;
-      background: linear-gradient(135deg, var(--ingot-light) 0%, var(--ingot-base) 50%, var(--ingot-dark) 100%);
-      border: 2px solid var(--ingot-edge);
-      border-radius: 6px;
-      box-shadow: 0 6px 10px rgba(0,0,0,0.7);
-      cursor: pointer;
-    }
-
-    .engraved {
-      color: rgba(69, 26, 3, 0.9);
-      text-shadow: 1px 1px 1px rgba(255,255,255,0.25), -1px -1px 1px rgba(0,0,0,0.5);
-      font-weight: 900;
-    }
-
-    .hidden-card { background: linear-gradient(145deg, #5d2b12 0%, #78350f 50%, #451a03 100%); }
-    .hidden-card::after { content: '⚙️'; opacity: 0.15; position: absolute; font-size: 1.2rem; }
-
-    .btn-steam {
-      background: linear-gradient(to bottom, var(--steam-brass), var(--steam-copper));
-      border: 2px solid #78350f;
-      color: white;
-      padding: 8px 12px;
-      font-family: 'Cinzel', serif;
-      box-shadow: 0 4px 0 #451a03;
-      transition: all 0.1s;
-      font-size: 0.75rem;
-      text-transform: uppercase;
-      font-weight: bold;
-    }
-
-    .p-controls .btn-steam {
-      padding: 4px 8px;
-      font-size: 0.65rem;
-      letter-spacing: 0.02em;
-    }
-
-    .btn-steam:active { transform: translateY(2px); box-shadow: 0 1px 0 #451a03; }
-    .btn-steam:disabled { filter: grayscale(1); opacity: 0.4; }
-
-    .score-badge {
-      font-family: 'Roboto Condensed', sans-serif;
-      background: #000;
-      border: 1px solid var(--steam-brass);
-      color: var(--steam-gold);
-      padding: 2px 8px;
-      border-radius: 4px;
-      font-weight: bold;
-      font-size: 1.1rem;
-    }
-
-    .side-pile-card {
-      width: 28px; height: 40px; font-size: 18px;
-      display: flex; align-items: center; justify-content: center;
-      background: var(--steam-paper);
-      border: 1.5px solid var(--ingot-edge);
-      color: black; font-weight: 900;
-      font-family: 'Roboto Condensed', sans-serif;
-      border-radius: 3px;
-      box-shadow: 2px 2px 4px rgba(0,0,0,0.6);
-    }
-    .lost-card { opacity: 0.3; filter: grayscale(1) brightness(0.6); border-style: dashed; }
-
-    .status-badge {
-      position: absolute;
-      top: -24px;
-      left: 50%;
-      transform: translateX(-50%);
-      padding: 3px 12px;
-      border-radius: 4px;
-      font-weight: 900;
-      font-size: 0.9rem;
-      white-space: nowrap;
-      z-index: 70;
-      box-shadow: 0 4px 8px rgba(0,0,0,0.6);
-      animation: badge-pop 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-      font-family: 'Cinzel', serif;
-    }
-    @keyframes badge-pop { from { transform: translateX(-50%) scale(0.85); } to { transform: translateX(-50%) scale(1); } }
-
-    .badge-win { background: #065f46; color: #34d399; border: 1px solid #34d399; }
-    .badge-batted { background: #7f1d1d; color: #f87171; border: 1px solid #f87171; }
-    .badge-scrapped { background: #444; color: #ccc; border: 1px solid #888; }
-
-    .badge-divine-hit {
-      background: #ef4444; color: white; border: 2px solid white;
-      top: -45px; font-size: 1rem; padding: 2px 10px;
-      animation: hit-shake 0.4s infinite;
-    }
-    @keyframes hit-shake {
-      0%, 100% { transform: translateX(-50%) rotate(0); }
-      25% { transform: translateX(-50%) rotate(-5deg); }
-      75% { transform: translateX(-50%) rotate(5deg); }
-    }
-
-    .winner-anim { animation: brass-glow 1.5s infinite; border-color: var(--steam-gold) !important; }
-    @keyframes brass-glow {
-      0%, 100% { box-shadow: inset 0 0 15px rgba(0,0,0,0.5); }
-      50% { box-shadow: 0 0 25px rgba(251,191,36,0.25), inset 0 0 18px rgba(0,0,0,0.5); }
-    }
-    .batted-anim { border-color: #ef4444 !important; }
-
-    .ex-machine-pulse { animation: red-pulse 1s infinite alternate; border-color: var(--ex-red) !important; }
-    @keyframes red-pulse { from { box-shadow: 0 0 5px var(--ex-red); } to { box-shadow: 0 0 20px var(--ex-red); } }
-
-    .modal-overlay { background: rgba(0,0,0,0.75); z-index: 200; backdrop-filter: blur(5px); padding: 20px; }
-    .modal-paper { background: var(--steam-paper); border: 8px solid var(--steam-copper); color: #451a03; box-shadow: 0 0 80px rgba(0,0,0,0.9); width: 100%; max-width: 440px; }
-
-    .card-batted { filter: grayscale(1) brightness(0.3); opacity: 0.8; transform: scale(0.95); }
-    .card-scrapped { filter: sepia(0.6) brightness(0.5); opacity: 0.7; transform: scale(0.9); }
-  </style>
+/* ===== 状態 ===== */
+.card-batted{ filter:grayscale(1) brightness(0.4); }
+.card-scrapped{ filter:sepia(0.6) brightness(0.5); }
+</style>
 </head>
 
 <body>
+<div id="viewport">
   <div class="game-container">
-    <!-- 左上：操作パネル -->
-    <div class="panel-box p-controls justify-center items-stretch gap-1.5">
-      <button id="dealBtn" class="btn-steam">INITIALIZE</button>
-      <button id="setParentBtn" class="btn-steam" disabled>APPOINT CAPTAIN</button>
-      <button id="showdownBtn" class="btn-steam hidden">SHOWDOWN</button>
+
+    <!-- 左上 -->
+    <div class="panel">
+      <button id="initBtn">INITIALIZE</button>
+      <button disabled>APPOINT CAPTAIN</button>
     </div>
 
-    <!-- Player 3 (Top) -->
-    <div id="playerBox2" class="panel-box p-top rounded-b-xl">
-      <div class="flex justify-between items-center mb-1">
-        <div class="flex items-center gap-3">
-          <span class="font-steampunk text-amber-500 text-sm font-black">UNIT-03</span>
-          <span class="parent-label hidden text-[9px] bg-amber-600 text-black px-2 font-black rounded">CAPTAIN</span>
-          <span class="ex-machine-label hidden text-[9px] bg-red-600 text-white px-2 font-black rounded uppercase">EX-MACHINA</span>
-        </div>
-        <div class="score-badge">0</div>
-      </div>
-      <div class="flex gap-4 items-start">
-        <div class="hand flex-shrink-0 flex justify-center gap-1 opacity-50 scale-75 origin-left"></div>
-        <div class="flex-1 flex flex-wrap gap-1.5 justify-end content-start h-12 overflow-y-auto pr-1">
-          <div class="side-won flex flex-wrap gap-1.5 justify-end"></div>
-          <div class="side-lost flex flex-wrap gap-1.5 justify-end"></div>
-        </div>
-      </div>
+    <!-- 上中央 -->
+    <div class="panel">
+      <div class="title">UNIT-03</div>
+      <div class="score" id="score3">0</div>
     </div>
 
-    <!-- 右上：タイトルパネル -->
-    <div class="panel-box p-title items-center justify-center">
-      <h1 class="font-steampunk text-2xl text-amber-500 font-black tracking-widest uppercase">Gear Front</h1>
-      <div class="text-[8px] text-stone-500 font-bold uppercase tracking-widest mt-1 italic">Tactical Gear Operation</div>
+    <!-- 右上 -->
+    <div class="panel">
+      <div class="title">GEAR FRONT</div>
+      <div style="font-size:12px;opacity:0.6;">TACTICAL GEAR OPERATION</div>
     </div>
 
-    <!-- Player 2 (Left) -->
-    <div id="playerBox1" class="panel-box p-left rounded-r-xl">
-      <div class="flex flex-col items-center gap-1 border-b border-stone-700 pb-2">
-        <span class="font-steampunk text-amber-500 text-xs font-black">UNIT-02</span>
-        <div class="score-badge">0</div>
-        <span class="parent-label hidden text-[8px] bg-amber-600 text-black px-1 font-bold rounded">CAPTAIN</span>
-      </div>
-      <div class="flex flex-col flex-1 items-center py-3">
-        <div class="hand flex flex-wrap justify-center gap-1 mb-4 opacity-40 scale-75"></div>
-        <div class="side-container flex flex-col flex-1 gap-2 overflow-y-auto w-full items-center px-1">
-          <div class="side-won flex flex-col gap-2"></div>
-          <div class="side-lost flex flex-col gap-2"></div>
-        </div>
-      </div>
+    <!-- 中央 -->
+    <div class="panel central-field" id="field">
+      <div class="card-row" id="fieldCards"></div>
     </div>
 
-    <!-- Central Field -->
-    <div class="central-field">
-      <div id="divineProtocolMsg" class="hidden absolute top-4 text-red-500 font-steampunk font-black text-xl tracking-[0.3em] animate-pulse">PROTOCOL: DIVINATION</div>
-      <div id="tableArea" class="flex gap-4 justify-center items-center scale-110"></div>
+    <!-- 左下 -->
+    <div class="panel">
+      <div class="title">ENGINE OUTPUT</div>
+      <div style="font-size:42px;font-weight:bold;">MISSION</div>
+      <div style="font-size:32px;">1 / 5</div>
     </div>
 
-    <!-- Player 4 (Right) -->
-    <div id="playerBox3" class="panel-box p-right rounded-l-xl">
-      <div class="flex flex-col items-center gap-1 border-b border-stone-700 pb-2">
-        <span class="font-steampunk text-amber-500 text-xs font-black">UNIT-04</span>
-        <div class="score-badge">0</div>
-        <span class="parent-label hidden text-[8px] bg-amber-600 text-black px-1 font-bold rounded">CAPTAIN</span>
-      </div>
-      <div class="flex flex-col flex-1 items-center py-3">
-        <div class="hand flex flex-wrap justify-center gap-1 mb-4 opacity-40 scale-75"></div>
-        <div class="side-container flex flex-col flex-1 gap-2 overflow-y-auto w-full items-center px-1">
-          <div class="side-won flex flex-col gap-2"></div>
-          <div class="side-lost flex flex-col gap-2"></div>
-        </div>
-      </div>
+    <!-- 下中央 -->
+    <div class="panel">
+      <div class="title">PILOT UNIT-01 (YOU)</div>
+      <div class="score" id="score1">0</div>
+      <div class="card-row" id="hand"></div>
     </div>
 
-    <!-- 左下：ミッションパネル -->
-    <div class="panel-box p-mission">
-      <div class="text-[10px] text-stone-500 font-bold uppercase tracking-widest mb-1">Engine Output</div>
-      <div id="roundLabel" class="font-steampunk text-4xl text-amber-500 font-black leading-none">MISSION 0/5</div>
-      <div id="statusMessage" class="text-[10px] text-stone-300 uppercase mt-3 italic font-bold tracking-tighter">System Idle...</div>
+    <!-- 右下 -->
+    <div class="panel">
+      <div class="title">TALON RESERVE</div>
+      <div class="card-row"></div>
     </div>
 
-    <!-- Player 1 (YOU) -->
-    <div id="playerBox0" class="panel-box p-bottom rounded-t-xl">
-      <div class="flex justify-between items-center mb-1">
-        <div class="flex gap-4 items-center">
-          <span class="font-steampunk text-amber-400 text-lg font-black uppercase tracking-tight">PILOT UNIT-01 (YOU)</span>
-          <span class="parent-label hidden text-[9px] bg-amber-600 text-black px-2 font-black rounded">CAPTAIN</span>
-          <span class="ex-machine-label hidden text-[9px] bg-red-600 text-white px-2 font-black rounded uppercase">EX MACHINA</span>
-        </div>
-        <div class="score-badge text-2xl px-4">0</div>
-      </div>
-
-      <div class="flex gap-6 h-full items-end pb-1">
-        <div class="hand flex-1 flex justify-start gap-4 items-end pb-1 overflow-x-auto min-h-[100px]"></div>
-        <div class="side-container flex flex-col gap-1 items-end overflow-hidden w-44 border-l border-stone-800 pl-4">
-          <div class="side-won flex flex-wrap gap-1.5 justify-end content-end"></div>
-          <div class="side-lost flex flex-wrap gap-1.5 justify-end content-end"></div>
-        </div>
-      </div>
-      <div class="result-msg absolute -top-10 left-1/2 -translate-x-1/2 text-amber-500 font-black uppercase w-full text-center text-sm tracking-widest"></div>
-    </div>
-
-    <!-- 右下：タロンパネル -->
-    <div class="panel-box p-talon items-center justify-center">
-      <div class="text-[10px] text-stone-500 font-bold uppercase tracking-widest mb-3 text-center">Talon Reserve</div>
-      <div id="talon" class="flex gap-3 scale-110"></div>
-    </div>
   </div>
-
-  <!-- Modals -->
-  <div id="exMachineModal" class="fixed inset-0 modal-overlay flex items-center justify-center hidden">
-    <div class="modal-paper p-8 text-center">
-      <h2 class="text-3xl font-steampunk font-black text-red-800 mb-2 uppercase italic">Divination Protocol</h2>
-      <p class="text-stone-700 text-xs mb-6 uppercase tracking-widest font-bold">Predict rival outputs (+3 pts per hit)</p>
-      <div class="grid grid-cols-3 gap-3 mb-8" id="exMachineInputs">
-        <div id="slot0" class="grid grid-cols-3 gap-1.5"></div>
-        <div id="slot1" class="grid grid-cols-3 gap-1.5"></div>
-        <div id="slot2" class="grid grid-cols-3 gap-1.5"></div>
-      </div>
-      <button id="exMachineSubmit" class="btn-steam w-full py-4 text-base font-bold text-white shadow-2xl">INITIATE RESOLUTION</button>
-    </div>
-  </div>
-
-  <div id="wildModal" class="fixed inset-0 modal-overlay flex items-center justify-center hidden">
-    <div class="modal-paper p-8 text-center">
-      <h2 class="text-2xl font-steampunk text-stone-800 mb-3 uppercase italic">Gear Adaptation</h2>
-      <p class="text-stone-700 text-sm mb-6 font-bold border-b-2 border-stone-300 pb-3">フィールド状況を確認し、適応値を決定せよ。</p>
-      <div class="grid grid-cols-3 gap-4 mt-4" id="wildChoices"></div>
-    </div>
-  </div>
-
-  <div id="rankingModal" class="fixed inset-0 modal-overlay flex items-center justify-center hidden">
-    <div class="modal-paper p-10 text-center text-stone-800 shadow-2xl">
-      <h2 class="text-4xl font-steampunk font-black text-amber-900 mb-6 uppercase border-b-4 border-copper-800 pb-4 text-center">Mission Debriefing</h2>
-      <div id="rankingList" class="space-y-3 mb-8 font-bold text-base text-left"></div>
-      <button id="restartBtn" class="btn-steam text-xl w-full py-4 uppercase font-bold tracking-[0.3em] text-white">Re-Ignite Mission</button>
-    </div>
-  </div>
-
-  <script>
-    const cardDefinition = [
-      { val: 1, count: 7, bonus: 6 },
-      { val: 2, count: 5, bonus: 3 },
-      { val: 3, count: 3, bonus: 2 },
-      { val: 4, count: 3, bonus: 1 },  // ※ここは「今ので合ってる」前提で触ってません
-      { val: 5, count: 2, bonus: 1 },
-      { val: 6, count: 2, bonus: 2 },
-      { val: '?', count: 1, bonus: 0 }
-    ];
-
-    let state = {
-      players: [
-        { id: 0, hand: [], sideWon: [], sideLost: [], rawScore: 0, score: 0, play: null, box: null, isBatted: false, lastWonRound: -1, npcWild: null, roundOutcome: null, isDivineHit: false },
-        { id: 1, hand: [], sideWon: [], sideLost: [], rawScore: 0, score: 0, play: null, box: null, isBatted: false, lastWonRound: -1, npcWild: null, roundOutcome: null, isDivineHit: false },
-        { id: 2, hand: [], sideWon: [], sideLost: [], rawScore: 0, score: 0, play: null, box: null, isBatted: false, lastWonRound: -1, npcWild: null, roundOutcome: null, isDivineHit: false },
-        { id: 3, hand: [], sideWon: [], sideLost: [], rawScore: 0, score: 0, play: null, box: null, isBatted: false, lastWonRound: -1, npcWild: null, roundOutcome: null, isDivineHit: false }
-      ],
-      talon: [],
-      parentIdx: null,
-      phase: 'idle',
-      roundCount: 0,
-      wildDeclaration: null,
-      exMachinePlayerIdx: null,
-      exMachineGuesses: [1, 1, 1],
-      allBattedLastRound: false,
-      divineHitPlayerIds: []
-    };
-
-    const statusEl = document.getElementById('statusMessage');
-    const roundLabelEl = document.getElementById('roundLabel');
-    const divineProtocolMsg = document.getElementById('divineProtocolMsg');
-    const dealBtn = document.getElementById('dealBtn');
-    const setParentBtn = document.getElementById('setParentBtn');
-    const showdownBtn = document.getElementById('showdownBtn');
-    const tableArea = document.getElementById('tableArea');
-    const wildModal = document.getElementById('wildModal');
-    const exMachineModal = document.getElementById('exMachineModal');
-    const rankingModal = document.getElementById('rankingModal');
-
-    state.players.forEach((p, i) => p.box = document.getElementById(`playerBox${i}`));
-
-    const wc = document.getElementById('wildChoices');
-    if (wc) {
-      for (let i = 1; i <= 6; i++) {
-        const b = document.createElement('button');
-        b.className = "bg-stone-300 active:bg-stone-400 p-5 font-number border-2 border-stone-800 text-3xl text-stone-800 shadow-inner font-black";
-        b.textContent = i;
-        b.onclick = () => {
-          state.wildDeclaration = i;
-          if (wildModal) wildModal.classList.add('hidden');
-          if (showdownBtn) {
-            showdownBtn.classList.remove('hidden');
-            showdownBtn.textContent = "EXECUTE RESOLUTION";
-            state.phase = 'resolution-ready';
-          }
-          renderAll();
-        };
-        wc.appendChild(b);
-      }
-    }
-
-    for (let s = 0; s < 3; s++) {
-      const container = document.getElementById(`slot${s}`);
-      if (!container) continue;
-      for (let i = 1; i <= 6; i++) {
-        const b = document.createElement('button');
-        b.className = `g-btn-${s} bg-stone-300 text-stone-600 text-xs py-2.5 border border-stone-400 font-number font-bold`;
-        b.textContent = i;
-        if (i === 1) b.classList.add('bg-red-800', 'text-white');
-        b.onclick = () => {
-          document.querySelectorAll(`.g-btn-${s}`).forEach(x => x.classList.remove('bg-red-800', 'text-white'));
-          b.classList.add('bg-red-800', 'text-white');
-          state.exMachineGuesses[s] = i;
-        };
-        container.appendChild(b);
-      }
-    }
-
-    function createSideCard(card, isLost = false) {
-      const sUI = document.createElement('div');
-      sUI.className = `side-pile-card ${isLost ? 'lost-card' : ''}`;
-      sUI.textContent = card.value;
-      return sUI;
-    }
-
-    function createCardUI(card, hidden = false, isLarge = false, pIdx = -1) {
-      const el = document.createElement('div');
-      let size = isLarge ? 'w-24 h-32 text-6xl' : (pIdx === 0 || pIdx === -99 ? 'w-14 h-20 text-3xl' : 'w-7 h-10 text-[0px]');
-      el.className = `card ${size} flex items-center justify-center font-number select-none relative border-2 rounded shadow-md font-black`;
-
-      if (hidden) {
-        el.classList.add('hidden-card');
-      } else {
-        let displayVal = card.value || '';
-        if (card.value === '?') {
-          const isVisible = (state.phase === 'revealed' || state.phase === 'resolution-ready' || state.phase === 'resolving');
-          if (pIdx === 0 && state.wildDeclaration && isVisible) displayVal = state.wildDeclaration;
-          else if (pIdx > 0 && state.players[pIdx] && state.players[pIdx].npcWild && isVisible) displayVal = state.players[pIdx].npcWild;
-        }
-        el.classList.add('engraved');
-        el.textContent = displayVal;
-
-        if (isLarge && pIdx !== -1) {
-          const p = state.players[pIdx];
-          if (p.roundOutcome === 'BATTED') el.classList.add('card-batted');
-          else if (p.roundOutcome === 'SCRAPPED') el.classList.add('card-scrapped');
-        }
-      }
-      return el;
-    }
-
-    function renderAll() {
-      if (roundLabelEl) roundLabelEl.textContent = `MISSION ${state.roundCount}/5`;
-
-      state.players.forEach((p, i) => {
-        p.box.classList.remove('ex-machine-pulse');
-        if (state.exMachinePlayerIdx === i && state.roundCount === 5) {
-          p.box.classList.add('ex-machine-pulse');
-        }
-
-        const handEl = p.box.querySelector('.hand');
-        if (handEl) {
-          handEl.innerHTML = '';
-          p.hand.forEach((c, idx) => {
-            const cui = createCardUI(c, i !== 0, false, i);
-            cui.onclick = () => handlePlay(i, idx);
-            if (p.play) cui.classList.add('opacity-10', 'pointer-events-none');
-            handEl.appendChild(cui);
-          });
-        }
-
-        const sideWonEl = p.box.querySelector('.side-won');
-        const sideLostEl = p.box.querySelector('.side-lost');
-        if (sideWonEl) { sideWonEl.innerHTML = ''; p.sideWon.forEach(c => sideWonEl.appendChild(createSideCard(c, false))); }
-        if (sideLostEl) { sideLostEl.innerHTML = ''; p.sideLost.forEach(c => sideLostEl.appendChild(createSideCard(c, true))); }
-
-        p.box.querySelector('.score-badge').textContent = p.score;
-        p.box.querySelector('.parent-label').classList.toggle('hidden', state.parentIdx !== i);
-        const exL = p.box.querySelector('.ex-machine-label');
-        if (exL) exL.classList.toggle('hidden', state.exMachinePlayerIdx !== i);
-      });
-
-      if (state.exMachinePlayerIdx !== null && state.roundCount === 5 && (state.phase === 'showdown-ready' || state.phase === 'revealed' || state.phase === 'resolving')) {
-        divineProtocolMsg.classList.remove('hidden');
-      } else {
-        divineProtocolMsg.classList.add('hidden');
-      }
-
-      const talonEl = document.getElementById('talon');
-      if (talonEl) {
-        talonEl.innerHTML = '';
-        state.talon.forEach(() => talonEl.appendChild(createCardUI({}, true, false, -99)));
-      }
-      renderTable();
-    }
-
-    function renderTable() {
-      if (!tableArea) return;
-      tableArea.innerHTML = '';
-      let count = 0;
-
-      state.players.forEach((p, i) => {
-        if (!p.play) return;
-        count++;
-
-        let isHidden = (state.phase !== 'revealed' && state.phase !== 'resolution-ready' && state.phase !== 'resolving' && !p.isBatted);
-        if (state.phase === 'playing' && i === state.parentIdx && state.roundCount < 5 && p.play.value !== '?') isHidden = false;
-
-        const cardWrap = document.createElement('div');
-        cardWrap.className = "flex flex-col items-center gap-1 relative";
-        const cui = createCardUI(p.play, isHidden, true, i);
-        cardWrap.appendChild(cui);
-
-        if (p.roundOutcome && state.phase === 'resolving') {
-          const badge = document.createElement('div');
-          badge.className = `status-badge badge-${p.roundOutcome.toLowerCase()}`;
-          badge.textContent = p.roundOutcome === 'BATTED' ? 'BATTED ✘' : p.roundOutcome;
-          cardWrap.appendChild(badge);
-        }
-
-        if (state.divineHitPlayerIds.includes(i) && state.phase === 'resolving') {
-          const hitBadge = document.createElement('div');
-          hitBadge.className = `status-badge badge-divine-hit`;
-          hitBadge.textContent = "DIVINE HIT!!";
-          cardWrap.appendChild(hitBadge);
-        }
-
-        const label = document.createElement('span');
-        label.className = "text-[10px] text-stone-500 font-bold uppercase";
-        label.textContent = `U-0${i+1}`;
-        cardWrap.appendChild(label);
-
-        tableArea.appendChild(cardWrap);
-      });
-
-      if (count === 4 && state.phase === 'playing') {
-        state.phase = 'showdown-ready';
-        if (showdownBtn) {
-          showdownBtn.classList.remove('hidden');
-          showdownBtn.textContent = "ENGAGE SHOWDOWN";
-        }
-        if (statusEl) statusEl.textContent = "READY FOR SHOWDOWN";
-      }
-    }
-
-    function handlePlay(pIdx, cIdx) {
-      if (state.phase !== 'playing' || state.players[pIdx].play) return;
-      if (pIdx !== 0) return;
-
-      if (state.players[state.parentIdx].play === null && pIdx !== state.parentIdx) {
-        if (statusEl) statusEl.textContent = "WAIT FOR CAPTAIN";
-        return;
-      }
-
-      const card = state.players[pIdx].hand[cIdx];
-
-      if (pIdx === state.parentIdx && state.roundCount < 5 && card.value === '?') {
-        if (statusEl) statusEl.textContent = "NO '?' OPENER";
-        return;
-      }
-
-      state.players[pIdx].play = state.players[pIdx].hand.splice(cIdx, 1)[0];
-
-      state.players.forEach((p, i) => {
-        if (i !== 0 && !p.play) {
-          let idx = 0;
-          if (i === state.parentIdx && state.roundCount < 5) {
-            idx = p.hand.findIndex(c => c.value !== '?');
-            if (idx === -1) idx = 0;
-          }
-          p.play = p.hand.splice(idx, 1)[0];
-        }
-      });
-
-      renderAll();
-    }
-
-    function initializeGame() {
-      let deck = [];
-      cardDefinition.forEach(d => { for (let i = 0; i < d.count; i++) deck.push({ value: d.val, bonus: d.bonus }); });
-      deck.sort(() => Math.random() - 0.5);
-
-      state.players.forEach(p => {
-        p.hand = deck.splice(0, 5);
-        p.play = null;
-        p.rawScore = 0;
-        p.score = 0;
-        p.sideWon = [];
-        p.sideLost = [];
-        p.isBatted = false;
-        p.lastWonRound = -1;
-        p.npcWild = null;
-        p.roundOutcome = null;
-        p.isDivineHit = false;
-        p.box.classList.remove('winner-anim', 'batted-anim', 'ex-machine-pulse');
-      });
-
-      state.talon = deck.splice(0, 3);
-
-      state.roundCount = 0;
-      state.parentIdx = null;
-      state.phase = 'dealing';
-      state.exMachinePlayerIdx = null;
-      state.allBattedLastRound = false;
-      state.divineHitPlayerIds = [];
-
-      if (showdownBtn) showdownBtn.classList.add('hidden');
-      if (setParentBtn) setParentBtn.disabled = false;
-      if (rankingModal) rankingModal.classList.add('hidden');
-
-      renderAll();
-      if (statusEl) statusEl.textContent = "BOILER STOKED";
-    }
-    if (dealBtn) dealBtn.onclick = initializeGame;
-
-    if (setParentBtn) {
-      setParentBtn.onclick = () => {
-        if (state.roundCount > 0 && state.allBattedLastRound) {
-          if (statusEl) statusEl.textContent = "CAPTAIN REMAINS";
-        } else if (state.roundCount === 0) {
-          state.parentIdx = Math.floor(Math.random() * 4);
-        } else {
-          const sorted = [...state.players].sort((a, b) => b.score - a.score || b.lastWonRound - a.lastWonRound);
-          state.parentIdx = sorted[0].id;
-        }
-
-        state.allBattedLastRound = false;
-        state.phase = 'playing';
-        state.roundCount++;
-        state.divineHitPlayerIds = [];
-
-        if (state.roundCount === 5) {
-          const zeros = state.players.filter(p => p.score === 0);
-          if (zeros.length > 0) {
-            const minSideCount = Math.min(...zeros.map(p => p.sideWon.length + p.sideLost.length));
-            const candidates = zeros.filter(p => (p.sideWon.length + p.sideLost.length) === minSideCount);
-            if (candidates.length === 1) state.exMachinePlayerIdx = candidates[0].id;
-          }
-        }
-
-        state.players.forEach(p => {
-          p.isBatted = false;
-          p.roundOutcome = null;
-          p.box.classList.remove('winner-anim', 'batted-anim');
-        });
-
-        if (state.parentIdx !== 0) {
-          let cp = state.players[state.parentIdx];
-          let cIdx = (state.roundCount < 5) ? cp.hand.findIndex(c => c.value !== '?') : 0;
-          if (cIdx === -1) cIdx = 0;
-          cp.play = cp.hand.splice(cIdx, 1)[0];
-        }
-
-        setParentBtn.disabled = true;
-        renderAll();
-      };
-    }
-
-    function npcSelectWild(pIdx) {
-      const p = state.players[pIdx];
-
-      const otherCards = state.players.filter(x => x.id !== pIdx).map(x => {
-        if (x.play.value !== '?') return x.play.value;
-        return (x.id === 0) ? state.wildDeclaration : x.npcWild;
-      }).filter(v => v !== null);
-
-      for (let n = 1; n <= 6; n++) {
-        if (otherCards.includes(n)) continue;
-
-        const tempField = [...otherCards, n];
-        const sum = tempField.filter(x => typeof x === 'number').reduce((a, b) => a + b, 0);
-        const types = new Set(tempField.filter(x => typeof x === 'number')).size;
-
-        let win = false;
-        switch (n) {
-          case 1: if ([...p.sideWon, ...p.sideLost].some(c => (c.value === 1 || c.originalValue === 1))) win = true; break;
-          case 2: if (types === 4) win = true; break;         // ※今ので合ってる前提
-          case 3: if (sum >= 7) win = true; break;           // ※今ので合ってる前提
-          case 4: if (types <= 2) win = true; break;         // ※今ので合ってる前提
-          case 5: if (tempField.includes(6)) win = true; break;
-          case 6: if (pIdx === state.parentIdx) win = true; break;
-        }
-        if (win) return n;
-      }
-
-      for (let n = 6; n >= 1; n--) { if (!otherCards.includes(n)) return n; }
-      return 6;
-    }
-
-    if (showdownBtn) {
-      showdownBtn.onclick = () => {
-        if (state.phase === 'showdown-ready') {
-          state.phase = 'revealed';
-          if (statusEl) statusEl.textContent = "FIELD REVEALED";
-
-          state.players.forEach((p, i) => {
-            if (i !== 0 && p.play.value === '?') p.npcWild = npcSelectWild(i);
-          });
-
-          renderAll();
-
-          const needsDec = (state.exMachinePlayerIdx === 0) ||
-            (state.players[0].play.value === '?' && state.exMachinePlayerIdx !== 0);
-
-          if (needsDec) {
-            showdownBtn.textContent = "CONFIRM & DECLARE";
-            state.phase = 'awaiting-declaration';
-          } else {
-            showdownBtn.textContent = "EXECUTE RESOLUTION";
-            state.phase = 'resolution-ready';
-          }
-        }
-        else if (state.phase === 'awaiting-declaration') {
-          if (state.exMachinePlayerIdx === 0) {
-            if (exMachineModal) exMachineModal.classList.remove('hidden');
-            showdownBtn.classList.add('hidden');
-          } else if (state.players[0].play.value === '?' && state.exMachinePlayerIdx !== 0) {
-            if (wildModal) wildModal.classList.remove('hidden');
-            showdownBtn.classList.add('hidden');
-          }
-        }
-        else if (state.phase === 'resolution-ready') {
-          resolveRound();
-        }
-      };
-    }
-
-    const exSubmit = document.getElementById('exMachineSubmit');
-    if (exSubmit) {
-      exSubmit.onclick = () => {
-        if (exMachineModal) exMachineModal.classList.add('hidden');
-        if (showdownBtn) {
-          showdownBtn.classList.remove('hidden');
-          if (state.players[0].play.value === '?' && state.exMachinePlayerIdx !== 0) {
-            if (wildModal) wildModal.classList.remove('hidden');
-            showdownBtn.classList.add('hidden');
-          } else {
-            showdownBtn.textContent = "EXECUTE RESOLUTION";
-            state.phase = 'resolution-ready';
-          }
-        }
-        renderAll();
-      };
-    }
-
-    function resolveRound() {
-      if (state.phase === 'resolving') return;
-      state.phase = 'resolving';
-
-      const plays = state.players.map((p, i) => {
-        let fv = p.play.value;
-        if (p.play.value === '?') fv = (i === 0) ? (state.wildDeclaration || 1) : (p.npcWild || 1);
-        return { val: fv, id: i, card: p.play, isParent: i === state.parentIdx, isWild: p.play.value === '?' };
-      });
-
-      // 1. バッティング
-      const counts = {};
-      plays.forEach(p => counts[p.val] = (counts[p.val] || 0) + 1);
-
-      plays.forEach(p => {
-        if (counts[p.val] > 1) {
-          state.players[p.id].isBatted = true;
-          state.players[p.id].roundOutcome = 'BATTED';
-          state.players[p.id].box.classList.add('batted-anim');
-        }
-      });
-
-      state.allBattedLastRound = state.players.every(p => p.isBatted);
-
-      const active = plays.filter(p => !state.players[p.id].isBatted);
-      const activeVals = active.map(p => p.val);
-      const sum = activeVals.reduce((a, b) => a + b, 0);
-      const types = new Set(activeVals).size;
-      active.sort((a, b) => a.val - b.val);
-
-      let roundWon = false;
-      const scoredThisRound = new Set();
-
-      for (const pd of active) {
-        if (roundWon) break;
-
-        const p = state.players[pd.id];
-        let isWin = false;
-
-        switch (pd.val) {
-          case 1: if ([...p.sideWon, ...p.sideLost].some(c => (c.value === 1 || c.originalValue === 1))) isWin = true; break;
-          case 2: if (types === 4) isWin = true; break;     // ※今ので合ってる前提
-          case 3: if (sum >= 7) isWin = true; break;       // ※今ので合ってる前提
-          case 4: if (types <= 2 && activeVals.length > 0) isWin = true; break;
-          case 5: if (activeVals.includes(6)) isWin = true; break;
-          case 6: if (pd.isParent) isWin = true; break;
-        }
-
-        if (isWin) {
-          /* 重要：?は加点しない（ボーナス0） */
-          p.rawScore += (pd.val + (pd.isWild ? 0 : (cardDefinition.find(d => d.val === pd.val)?.bonus || 0)));
-          p.sideWon.push({ value: pd.val, originalValue: pd.card.value });
-          p.lastWonRound = state.roundCount;
-          p.box.classList.add('winner-anim');
-          p.roundOutcome = 'WIN';
-          roundWon = true;
-          scoredThisRound.add(p.id);
-        }
-      }
-
-      if (!roundWon && active.length) {
-        // パワー勝利：最大値のみ（ボーナスなし）
-        const pwr = active.reduce((a, b) => a.val > b.val ? a : b);
-        const p = state.players[pwr.id];
-        p.rawScore += pwr.val;
-        p.sideWon.push({ value: pwr.val, originalValue: pwr.card.value });
-        p.lastWonRound = state.roundCount;
-        scoredThisRound.add(p.id);
-        p.roundOutcome = 'WIN';
-        p.box.classList.add('winner-anim');
-      }
-
-      // 勝ってない＆バッティングでもない → SCRAPPED
-      plays.forEach(pd => {
-        const p = state.players[pd.id];
-        if (!scoredThisRound.has(p.id) && !p.isBatted) {
-          p.sideLost.push({ value: pd.val, originalValue: pd.card.value });
-          p.roundOutcome = 'SCRAPPED';
-        }
-      });
-
-      // EX:MACHINA（最終ラウンドボーナス）
-      state.divineHitPlayerIds = [];
-      if (state.exMachinePlayerIdx !== null && state.roundCount === 5) {
-        let bonus = 0;
-        let g = [...state.exMachineGuesses];
-
-        plays.forEach(target => {
-          if (target.id === state.exMachinePlayerIdx) return;
-          const idx = g.indexOf(target.card.value);
-          if (idx !== -1) {
-            bonus += 3;
-            g.splice(idx, 1);
-            state.divineHitPlayerIds.push(target.id);
-          }
-        });
-
-        state.players[state.exMachinePlayerIdx].rawScore += bonus;
-
-        if (bonus > 0) {
-          const rm = state.players[state.exMachinePlayerIdx].box.querySelector('.result-msg');
-          if (rm) rm.textContent = `DIVINE BONUS +${bonus}!!`;
-        }
-      }
-
-      // 6のペナルティ（他者の合計から-1）
-      state.players.forEach(target => {
-        let totalPenalty = 0;
-        state.players.forEach(owner => {
-          if (owner.id !== target.id) {
-            totalPenalty += [...owner.sideWon, ...owner.sideLost].filter(c => (c.value === 6 || c.originalValue === 6)).length;
-          }
-        });
-        target.score = Math.max(0, target.rawScore - totalPenalty);
-      });
-
-      renderAll();
-      if (showdownBtn) showdownBtn.classList.add('hidden');
-
-      setTimeout(() => {
-        state.players.forEach(p => { p.play = null; p.npcWild = null; p.roundOutcome = null; });
-        state.wildDeclaration = null;
-        state.phase = 'playing';
-        renderAll();
-
-        if (state.players[0].hand.length > 0) {
-          if (setParentBtn) setParentBtn.disabled = false;
-        } else {
-          state.phase = 'finished';
-          showFinalRanking();
-        }
-      }, 3500);
-    }
-
-    function showFinalRanking() {
-      const sorted = [...state.players].sort((a, b) => b.score - a.score || b.lastWonRound - a.lastWonRound);
-      const list = document.getElementById('rankingList');
-      if (list) {
-        list.innerHTML = "";
-        sorted.forEach((p, i) => {
-          const row = document.createElement('div');
-          row.className = `flex justify-between items-center border-b border-stone-300 py-2 ${i === 0 ? 'text-amber-800 font-black' : ''}`;
-          const rankText = (i + 1 === 1) ? '1ST' : (i + 1 === 2) ? '2ND' : (i + 1 === 3) ? '3RD' : (i + 1 === 4) ? '4TH' : '---';
-          row.innerHTML = `
-            <div class="flex items-center gap-4">
-              <span class="text-2xl font-steampunk w-16 text-left flex-shrink-0 text-amber-700">${rankText}</span>
-              <span class="text-sm font-bold uppercase">${p.id === 0 ? "PILOT UNIT-01 (YOU)" : "PILOT UNIT-0" + (p.id + 1)}</span>
-            </div>
-            <div class="text-xl font-number font-black">${p.score} <span class="text-[10px]">PTS</span></div>
-          `;
-          list.appendChild(row);
-        });
-      }
-      if (rankingModal) rankingModal.classList.remove('hidden');
-    }
-
-    const rb = document.getElementById('restartBtn');
-    if (rb) rb.onclick = initializeGame;
-
-    renderAll();
-  </script>
+</div>
+
+<script>
+/* ===== フィット処理 ===== */
+function fitToScreen(){
+  const gc=document.querySelector('.game-container');
+  const s=Math.min(
+    window.innerWidth/1280,
+    window.innerHeight/720
+  );
+  gc.style.transform=`scale(${s})`;
+}
+window.addEventListener('resize',fitToScreen);
+window.addEventListener('orientationchange',fitToScreen);
+fitToScreen();
+
+/* ===== ゲーム簡易ロジック ===== */
+const hand=[1,1,2,3,4];
+const field=[2,3,5,1];
+
+function render(){
+  const h=document.getElementById('hand');
+  const f=document.getElementById('fieldCards');
+  h.innerHTML="";
+  f.innerHTML="";
+
+  hand.forEach(n=>{
+    const c=document.createElement('div');
+    c.className='card';
+    c.textContent=n;
+    h.appendChild(c);
+  });
+
+  field.forEach(n=>{
+    const c=document.createElement('div');
+    c.className='card';
+    c.textContent=n;
+    f.appendChild(c);
+  });
+}
+
+/* ===== 加点判定 ===== */
+function calcScore(){
+  let score=0;
+
+  // 2：場が4枚なら +3
+  if(field.length===4 && field.includes(2)) score+=3;
+
+  // 3：合計8以上なら +2
+  if(field.reduce((a,b)=>a+b,0)>=8 && field.includes(3)) score+=2;
+
+  // 4：2枚以下なら +2
+  if(field.length<=2 && field.includes(4)) score+=2;
+
+  // ? は加点しない（そもそも数値扱いしない）
+
+  document.getElementById('score1').textContent=score;
+}
+
+render();
+calcScore();
+</script>
 </body>
 </html>
