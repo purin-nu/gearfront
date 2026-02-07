@@ -195,21 +195,18 @@
         .card-batted { filter: grayscale(1) brightness(0.3); opacity: 0.8; transform: scale(0.95); }
         .card-scrapped { filter: sepia(0.6) brightness(0.5); opacity: 0.7; transform: scale(0.9); }
         /* ---- Mobile fit patch: scale whole UI to fit screen ---- */
-:root { --fit-scale: 1; }
-
 .game-container {
   transform-origin: top left;
   transform: scale(var(--fit-scale));
 }
-
-/* iPhone等の縦持ちで全体を縮める */
+        /* iPhone等の縦持ち */
 @media (max-width: 480px) {
   :root { --fit-scale: 0.75; }
 }
 
-/* ちょい大きめ端末 */
-@media (min-width: 481px) and (max-width: 900px) {
-  :root { --fit-scale: 0.6; }
+/* 横持ち（スマホ横はここ！） */
+@media (max-width: 900px) and (orientation: landscape) {
+  :root { --fit-scale: 0.9; }
 }
     </style>
 </head>
